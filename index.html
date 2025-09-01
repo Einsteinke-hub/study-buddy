@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Buddy - Flashcard Generator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="logo" href="download.jpeg" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-brain"></i> Study Buddy</h1>
+            <p class="tagline">AI-powered flashcard generator for effective studying</p>
+        </header>
+        
+        <div class="main-content">
+            <section class="input-section">
+                <h2>Select a Study Topic</h2>
+                
+                <div class="topic-selector">
+                    <p>Choose a topic here:</p>
+                    <div class="topic-buttons">
+                        <button class="topic-btn active" data-topic="biology">Biology</button>
+                        <button class="topic-btn" data-topic="history">History</button>
+                        <button class="topic-btn" data-topic="programming">Programming</button>
+                        <button class="topic-btn" data-topic="physics">Physics</button>
+                        <button class="topic-btn" data-topic="math">Mathematics</button>
+                    </div>
+                    <p style="color: var(--success);">Or enter your own notes then click "Generate Flashcards":</p>
+                </div>
+                
+                <textarea id="study-notes" placeholder="Paste your study notes here..."></textarea>
+                
+                <div class="features">
+                    <div class="feature">
+                        <i class="fas fa-check-circle" style="color: var(--success);"></i>
+                        <span>No complex UI</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-database" style="color: var(--primary);"></i>
+                        <span>Database storage</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-robot" style="color: var(--accent);"></i>
+                        <span>AI-powered questions</span>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="generate-btn" class="btn btn-primary">
+                        <i class="fas fa-robot"></i> Generate Flashcards
+                    </button>
+                    <button id="clear-btn" class="btn btn-secondary">
+                        <i class="fas fa-trash"></i> Clear Notes
+                    </button>
+                    <button id="sample-btn" class="btn btn-secondary">
+                        <i class="fas fa-lightbulb"></i> Load Sample Notes
+                    </button>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress"></div>
+                </div>
+                
+                <div class="api-status">
+                    <span class="status-indicator" id="api-status-indicator"></span>
+                    <span id="api-status-text">Checking backend connection...</span>
+                </div>
+            </section>
+
+            <a href="https://buy.stripe.com/test_28E9ANb734Le3gLaFU9Ve00" class="pay" target="_blank">
+                 <button class="btn" style="background-color: var(--success); color: var(--light);"><i class="fas fa-crown"></i> Upgrade to Premium</button>
+            </a>
+
+
+            <section class="flashcards-section">
+                <h2>Your Flashcards <span id="flashcard-count"></span></h2>
+                
+                <div id="flashcards-container" class="flashcards-container">
+                    <div class="empty-state">
+                        <i class="fas fa-book-open"></i>
+                        <p>No flashcards yet. Select a topic or enter notes to generate flashcards!</p>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="shuffle-btn" class="btn btn-secondary" disabled>
+                        <i class="fas fa-random"></i> Shuffle Flashcards
+                    </button>
+                    <button id="reset-btn" class="btn btn-secondary" disabled>
+                        <i class="fas fa-redo"></i> Reset All Flashcards
+                    </button>
+                    <button id="load-saved-btn" class="btn btn-secondary">
+                        <i class="fas fa-download"></i> Load Saved Flashcards
+                    </button>
+                </div>
+            </section>
+        </div>
+        
+        <footer>
+            <p>Study Buddy - Flashcard Generator &copy; 2025 Einstein Dipondo</p>
+            <div class="tech-stack">
+                <div class="tech-item">
+                    <i class="fab fa-html5" style="color: #e34f26;"></i>
+                    <span>HTML5</span>
+                </div>
+                <div class="tech-item">
+                    <i class="fab fa-css3-alt" style="color: #264de4;"></i>
+                    <span>CSS3</span>
+                </div>
+                <div class="tech-item">
+                    <i class="fab fa-js" style="color: #f7df1e;"></i>
+                    <span>JavaScript</span>
+                </div>
+                <div class="tech-item">
+                    <i class="fab fa-python" style="color: #3776ab;"></i>
+                    <span>Python</span>
+                </div>
+                <div class="tech-item">
+                    <i class="fas fa-database" style="color: #00758f;"></i>
+                    <span>MySQL</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <div id="notification" class="notification">
+        <i class="fas fa-check-circle"></i>
+        <div>
+            <span id="notification-text">Flashcards generated successfully!</span>
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Backend API URL - change this to match your Flask server
+        const API_BASE_URL = 'http://localhost:5000';
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const studyNotes = document.getElementById('study-notes');
+            const generateBtn = document.getElementById('generate-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const sampleBtn = document.getElementById('sample-btn');
+            const shuffleBtn = document.getElementById('shuffle-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const loadSavedBtn = document.getElementById('load-saved-btn');
+            const flashcardsContainer = document.getElementById('flashcards-container');
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notification-text');
+            const progressBar = document.querySelector('.progress-bar');
+            const progress = document.querySelector('.progress');
+            const flashcardCount = document.getElementById('flashcard-count');
+            const topicButtons = document.querySelectorAll('.topic-btn');
+            const apiStatusIndicator = document.getElementById('api-status-indicator');
+            const apiStatusText = document.getElementById('api-status-text');
+            
+            // Sample content for different topics
+            const topicContents = {
+                biology: `Photosynthesis is the process used by plants, algae, and certain bacteria to harness energy from sunlight into chemical energy. 
+Oxygen is released as a byproduct of photosynthesis. The mitochondria are known as the powerhouses of the cell because they generate most of the cell's supply of adenosine triphosphate (ATP), used as a source of chemical energy.
+DNA replication is the biological process of producing two identical replicas of DNA from one original DNA molecule. This process occurs in all living organisms and is the basis for biological inheritance.
+
+Key terms:
+- Chlorophyll: Green pigment in plants that absorbs light energy
+- Cellular respiration: Process that breaks down glucose to produce ATP
+- Enzyme: Protein that acts as a biological catalyst
+- Genome: Entire set of genetic material in an organism`,
+
+                history: `The American Revolution was a colonial revolt that occurred between 1765 and 1783. The American Patriots in the Thirteen Colonies defeated the British in the American Revolutionary War with the assistance of France, winning independence from Great Britain and establishing the United States of America.
+
+The French Revolution was a period of radical political and societal change in France that began with the Estates General of 1789 and ended with the formation of the French Consulate in November 1799.
+
+Key terms:
+- Declaration of Independence: Document adopted on July 4, 1776, announcing the separation of the 13 colonies from Britain
+- Constitution: Supreme law of the United States, drafted in 1787 and ratified in 1788
+- Napoleon Bonaparte: French military and political leader who rose to prominence during the French Revolution
+- Bastille: Medieval fortress in Paris that became a symbol of the tyranny of the Bourbon monarchy`,
+
+                programming: `JavaScript is a programming language that conforms to the ECMAScript specification. JavaScript is high-level, often just-in-time compiled, and multi-paradigm. It has curly-bracket syntax, dynamic typing, prototype-based object-orientation, and first-class functions.
+
+HTML (HyperText Markup Language) is the standard markup language for documents designed to be displayed in a web browser. It can be assisted by technologies such as Cascading Style Sheets and scripting languages such as JavaScript.
+
+Key terms:
+- API: Application Programming Interface - a set of functions and procedures allowing the creation of applications that access the features or data of an operating system, application, or other service
+- DOM: Document Object Model - a programming interface for web documents that represents the page structure
+- CSS: Cascading Style Sheets - used to describe the presentation of a document written in HTML
+- Function: A block of code designed to perform a particular task, executed when invoked`,
+
+                physics: `Newton's laws of motion are three laws that describe the relationship between the motion of an object and the forces acting on it. These laws can be paraphrased as follows:
+1. An object will not change its motion unless a force acts on it.
+2. The force on an object is equal to its mass times its acceleration.
+3. When two objects interact, they apply forces to each other of equal magnitude and opposite direction.
+
+Key terms:
+- Gravity: Force that attracts a body toward the center of the earth, or toward any other physical body having mass
+- Thermodynamics: Branch of physics that deals with heat and temperature, and their relation to energy, work, radiation, and properties of matter
+- Quantum mechanics: Fundamental theory in physics that provides a description of the physical properties of nature at the scale of atoms and subatomic particles
+- Relativity: Theory developed by Einstein that revolutionized understanding of space, time, and gravity`,
+
+                math: `Algebra is a branch of mathematics dealing with symbols and the rules for manipulating those symbols. In elementary algebra, those symbols represent quantities without fixed values, known as variables.
+
+Calculus is the mathematical study of continuous change, in the same way that geometry is the study of shape and algebra is the study of generalizations of arithmetic operations.
+
+Key terms:
+- Quadratic equation: An equation of the second degree, meaning it contains at least one term that is squared
+- Derivative: Measures how a function changes as its input changes, representing an instantaneous rate of change
+- Integral: Assigns numbers to functions in a way that can describe displacement, area, volume, and other concepts that arise by combining infinitesimal data
+- Theorem: A statement that has been proved on the basis of previously established statements`
+            };
+
+            let flashcards = [];
+            let currentTopic = 'biology';
+            
+            // Check backend connection on page load
+            checkBackendConnection();
+            
+            // Load initial content for default topic
+            studyNotes.value = topicContents.biology;
+            
+            // Set up topic buttons
+            topicButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    topicButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                    
+                    // Update current topic and load content
+                    currentTopic = this.dataset.topic;
+                    studyNotes.value = topicContents[currentTopic];
+                    
+                    showNotification(`Loaded ${currentTopic} notes!`);
+                });
+            });
+            
+            // Clear notes
+            clearBtn.addEventListener('click', function() {
+                studyNotes.value = '';
+                showNotification('Notes cleared!');
+            });
+            
+            // Load sample notes for current topic
+            sampleBtn.addEventListener('click', function() {
+                studyNotes.value = topicContents[currentTopic];
+                showNotification(`Sample ${currentTopic} notes loaded!`);
+            });
+            
+            // Generate flashcards
+            generateBtn.addEventListener('click', function() {
+                const notes = studyNotes.value.trim();
+                if (!notes) {
+                    showNotification('Please enter some study notes first!', 'error');
+                    return;
+                }
+                
+                // Call the backend to generate flashcards
+                generateFlashcards(notes, currentTopic);
+            });
+            
+            // Shuffle flashcards
+            shuffleBtn.addEventListener('click', function() {
+                shuffleFlashcards();
+                showNotification('Flashcards shuffled!');
+            });
+            
+            // Reset flashcards
+            resetBtn.addEventListener('click', function() {
+                flashcardsContainer.innerHTML = '';
+                flashcards = [];
+                updateFlashcardCount();
+                toggleActionButtons();
+                
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                emptyState.innerHTML = `
+                    <i class="fas fa-book-open"></i>
+                    <p>No flashcards yet. Select a topic or enter notes to generate flashcards!</p>
+                `;
+                flashcardsContainer.appendChild(emptyState);
+                
+                showNotification('All flashcards reset!');
+            });
+            
+            // Load saved flashcards
+            loadSavedBtn.addEventListener('click', function() {
+                loadSavedFlashcards();
+            });
+            
+            // Check backend connection
+            function checkBackendConnection() {
+                fetch(`${API_BASE_URL}/api/health`)
+                    .then(response => response.json())
+                    .then(data => {
+                        apiStatusIndicator.className = 'status-indicator status-connected';
+                        apiStatusText.textContent = 'Backend connected';
+                    })
+                    .catch(error => {
+                        apiStatusIndicator.className = 'status-indicator status-disconnected';
+                        apiStatusText.textContent = 'Backend not connected - using demo mode';
+                        console.error('Backend connection failed:', error);
+                    });
+            }
+            
+            // Generate flashcards using the backend API
+            function generateFlashcards(notes, topic) {
+                // Show loading state
+                generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                generateBtn.disabled = true;
+                progressBar.style.display = 'block';
+                
+                // Simulate progress
+                let width = 0;
+                const interval = setInterval(() => {
+                    width += 5;
+                    progress.style.width = width + '%';
+                    if (width >= 100) {
+                        clearInterval(interval);
+                    }
+                }, 100);
+                
+                // Make API call to backend
+                fetch(`${API_BASE_URL}/api/generate-flashcards`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: notes,
+                        topic: topic,
+                        num_questions: 5
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Display the generated flashcards
+                    displayFlashcards(data.flashcards);
+                    
+                    // Show success message
+                    showNotification(`${data.flashcards.length} flashcards generated successfully!`);
+                })
+                .catch(error => {
+                    console.error('Error calling backend API:', error);
+                    // Fallback to simulated generation if API call fails
+                    simulateAIGeneration(notes, topic);
+                    showNotification('Using demo mode - backend not available', 'error');
+                })
+                .finally(() => {
+                    // Reset button and progress bar
+                    generateBtn.innerHTML = '<i class="fas fa-robot"></i> Generate Flashcards';
+                    generateBtn.disabled = false;
+                    progressBar.style.display = 'none';
+                    progress.style.width = '0%';
+                });
+            }
+            
+            // Load saved flashcards from backend
+            function loadSavedFlashcards() {
+                fetch(`${API_BASE_URL}/api/flashcards`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.flashcards && data.flashcards.length > 0) {
+                            displayFlashcards(data.flashcards);
+                            showNotification(`Loaded ${data.flashcards.length} saved flashcards!`);
+                        } else {
+                            showNotification('No saved flashcards found', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading saved flashcards:', error);
+                        showNotification('Failed to load saved flashcards', 'error');
+                    });
+            }
+            
+            // Simulate AI processing and flashcard generation (fallback)
+            function simulateAIGeneration(notes, topic) {
+                // Generate flashcards based on the selected topic
+                let generatedCards = [];
+                
+                switch(topic) {
+                    case 'biology':
+                        generatedCards = [
+                            { question: "What is the process used by plants to convert sunlight into energy?", answer: "Photosynthesis" },
+                            { question: "What is released as a byproduct of photosynthesis?", answer: "Oxygen" },
+                            { question: "What are the powerhouses of the cell?", answer: "Mitochondria" },
+                            { question: "What does ATP stand for?", answer: "Adenosine Triphosphate" },
+                            { question: "What is the biological process of producing two identical DNA replicas?", answer: "DNA Replication" }
+                        ];
+                        break;
+                    case 'history':
+                        generatedCards = [
+                            { question: "When did the American Revolution take place?", answer: "1765 to 1783" },
+                            { question: "Which country assisted the American Patriots in defeating the British?", answer: "France" },
+                            { question: "What document announced the separation of the 13 colonies from Britain?", answer: "Declaration of Independence" },
+                            { question: "Who was the French military leader who rose to prominence during the French Revolution?", answer: "Napoleon Bonaparte" },
+                            { question: "What medieval fortress became a symbol of the tyranny of the Bourbon monarchy?", answer: "Bastille" }
+                        ];
+                        break;
+                    case 'programming':
+                        generatedCards = [
+                            { question: "What does API stand for?", answer: "Application Programming Interface" },
+                            { question: "What does DOM stand for in web development?", answer: "Document Object Model" },
+                            { question: "Which language is known as the markup language for web pages?", answer: "HTML" },
+                            { question: "What does CSS stand for?", answer: "Cascading Style Sheets" },
+                            { question: "What is a block of code designed to perform a particular task called?", answer: "Function" }
+                        ];
+                        break;
+                    case 'physics':
+                        generatedCards = [
+                            { question: "How many laws of motion did Newton formulate?", answer: "Three" },
+                            { question: "What is the force that attracts objects toward each other?", answer: "Gravity" },
+                            { question: "Which branch of physics deals with heat and temperature?", answer: "Thermodynamics" },
+                            { question: "Who developed the theory of relativity?", answer: "Albert Einstein" },
+                            { question: "What theory describes nature at the scale of atoms and subatomic particles?", answer: "Quantum mechanics" }
+                        ];
+                        break;
+                    case 'math':
+                        generatedCards = [
+                            { question: "Which branch of mathematics deals with symbols and variables?", answer: "Algebra" },
+                            { question: "What is the mathematical study of continuous change called?", answer: "Calculus" },
+                            { question: "What is an equation of the second degree called?", answer: "Quadratic equation" },
+                            { question: "What measures how a function changes as its input changes?", answer: "Derivative" },
+                            { question: "What is a statement that has been proved in mathematics called?", answer: "Theorem" }
+                        ];
+                        break;
+                    default:
+                        generatedCards = [
+                            { question: "What is the process used by plants to convert sunlight into energy?", answer: "Photosynthesis" },
+                            { question: "What is released as a byproduct of photosynthesis?", answer: "Oxygen" },
+                            { question: "What are the powerhouses of the cell?", answer: "Mitochondria" },
+                            { question: "What does ATP stand for?", answer: "Adenosine Triphosphate" },
+                            { question: "What is the biological process of producing two identical DNA replicas?", answer: "DNA Replication" }
+                        ];
+                }
+                
+                // Display the generated flashcards
+                displayFlashcards(generatedCards);
+            }
+            
+            // Display flashcards in the container
+            function displayFlashcards(cards) {
+                // Clear previous flashcards
+                flashcardsContainer.innerHTML = '';
+                flashcards = cards;
+                
+                if (cards.length === 0) {
+                    flashcardsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>No flashcards could be generated from your notes. Try adding more detailed content.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Create flashcards
+                cards.forEach((card, index) => {
+                    const flashcardEl = document.createElement('div');
+                    flashcardEl.className = 'flashcard';
+                    flashcardEl.innerHTML = `
+                        <div class="flashcard-inner">
+                            <div class="flashcard-front">
+                                <div class="card-number">${index + 1}</div>
+                                <p>${card.question}</p>
+                            </div>
+                            <div class="flashcard-back">
+                                <p>${card.answer}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add flip on click
+                    flashcardEl.addEventListener('click', function() {
+                        this.classList.toggle('flipped');
+                    });
+                    
+                    flashcardsContainer.appendChild(flashcardEl);
+                });
+                
+                updateFlashcardCount();
+                toggleActionButtons();
+            }
+            
+            // Shuffle the flashcards
+            function shuffleFlashcards() {
+                for (let i = flashcards.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [flashcards[i], flashcards[j]] = [flashcards[j], flashcards[i]];
+                }
+                
+                displayFlashcards(flashcards);
+            }
+            
+            // Update flashcard count display
+            function updateFlashcardCount() {
+                flashcardCount.textContent = `(${flashcards.length} cards)`;
+            }
+            
+            // Toggle action buttons based on whether there are flashcards
+            function toggleActionButtons() {
+                if (flashcards.length > 0) {
+                    shuffleBtn.disabled = false;
+                    resetBtn.disabled = false;
+                } else {
+                    shuffleBtn.disabled = true;
+                    resetBtn.disabled = true;
+                }
+            }
+            
+            // Show notification
+            function showNotification(message, type = 'success') {
+                notificationText.textContent = message;
+                
+                if (type === 'error') {
+                    notification.classList.add('error');
+                } else {
+                    notification.classList.remove('error');
+                }
+                
+                notification.classList.add('show');
+                
+                // Auto-hide after 3 seconds
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+        });
+           
+    </script>
+</body>
+</html>
